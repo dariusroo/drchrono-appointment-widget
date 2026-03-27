@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book an Appointment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <!-- React + Babel via CDN — no npm/build needed -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #171b26;
+      --card: #1e2333;
+      --card-active: #1a2540;
+      --border: #2a2f42;
+      --text: #e8ecf5;
+      --muted: #5a6280;
+      --accent: #6eb5ff;
+      --accent-soft: #6eb5ff18;
+    }
+    html, body, #root {
+      height: 100%;
+      background: radial-gradient(ellipse at 20% 20%, #1a1f35 0%, #0f1117 60%);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+    }
+    /* Allow page to scroll if content is taller than viewport */
+    body { overflow-y: auto; }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .step-anim { animation: fadeSlideIn 0.35s ease both; }
+    .field {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+      resize: none;
+    }
+    .field:focus { border-color: var(--accent); }
+    .field::placeholder { color: var(--muted); }
+    .cal-day:hover { background: var(--accent-soft) !important; }
+    .slot:hover { filter: brightness(1.12); }
+    .card-item:hover { border-color: var(--accent) !important; }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ── Mock DrChrono API Data ────────────────────────────────────────────────
+    // 🔧 REPLACE THESE with real fetch() calls using your DrChrono OAuth token
+    const MOCK_OFFICES = [
+      { id: 1, name: "Downtown Medical Center", address: "120 Market St, San Francisco, CA 94105" },
+      { id: 2, name: "Westside Health Clinic",  address: "4400 Geary Blvd, San Francisco, CA 94118" },
+    ];
+    const MOCK_DOCTORS = [
+      { id: 101, first_name: "Sarah",  last_name: "Chen",  specialty: "Internal Medicine", office_id: 1 },
+      { id: 102, first_name: "Marcus", last_name: "Webb",  specialty: "Family Medicine",   office_id: 1 },
+      { id: 103, first_name: "Priya",  last_name: "Nair",  specialty: "Cardiology",         office_id: 2 },
+    ];
+    const MOCK_PROFILES = [
+      { id: 201, name: "New Patient Visit", duration: 60, color: "#4A90D9" },
+      { id: 202, name: "Follow-Up",         duration: 30, color: "#7B68EE" },
+      { id: 203, name: "Annual Physical",   duration: 45, color: "#50C878" },
+      { id: 204, name: "Urgent Care",       duration: 20, color: "#FF6B6B" },
+    ];
+    const generateSlots = (doctorId) => {
+      const booked = { 101: ["09:00","10:30","14:00"], 102: ["09:30","11:00","15:30"], 103: ["10:00","13:00","16:00"] };
+      const all = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
+      return all.map(t => ({ time: t, available: !(booked[doctorId] || []).includes(t) }));
+    };
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const pad = n => String(n).padStart(2,"0");
+    const fmtDate = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+
+    // ── Step Indicator ────────────────────────────────────────────────────────
+    function StepIndicator({ steps, current }) {
+      return (
+        <div style={{ display:"flex", alignItems:"center", marginBottom:32 }}>
+          {steps.map((s, i) => (
+            <React.Fragment key={i}>
+              <div style={{ display:"flex", alignItems:"center", flexDirection:"column", gap:4 }}>
+                <div style={{
+                  width:30, height:30, borderRadius:"50%", display:"flex",
+                  alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700,
+                  background: i <= current ? "var(--accent)" : "transparent",
+                  border: i <= current ? "2px solid var(--accent)" : "2px solid var(--muted)",
+                  color: i <= current ? "#0f1117" : "var(--muted)",
+                  transform: i === current ? "scale(1.15)" : "scale(1)",
+                  transition: "all 0.3s",
+                }}>
+                  {i < current ? "✓" : i + 1}
+                </div>
+                <span style={{ fontSize:10, fontWeight:600, color: i === current ? "var(--accent)" : i < current ? "var(--text)" : "var(--muted)", whiteSpace:"nowrap", letterSpacing:"0.04em" }}>
+                  {s}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div style={{ flex:1, height:2, background: i < current ? "var(--accent)" : "var(--border)", margin:"0 6px", marginBottom:18, borderRadius:1, transition:"background 0.3s" }} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Calendar ──────────────────────────────────────────────────────────────
+    function Calendar({ selectedDate, onSelect, year, month, onPrev, onNext }) {
+      const days = new Date(year, month + 1, 0).getDate();
+      const firstDay = new Date(year, month, 1).getDay();
+      const today = new Date();
+      const blanks = Array(firstDay).fill(null);
+      const allDays = [...blanks, ...Array.from({ length: days }, (_, i) => i + 1)];
+      return (
+        <div style={{ background:"var(--card)", borderRadius:14, padding:18, border:"1px solid var(--border)" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+            <button onClick={onPrev} style={{ background:"transparent", border:"1px solid var(--border)", color:"var(--text)", borderRadius:8, width:30, height:30, cursor:"pointer", fontSize:16 }}>‹</button>
+            <span style={{ fontSize:15, fontWeight:600 }}>{MONTHS[month]} {year}</span>
+            <button onClick={onNext} style={{ background:"transparent", border:"1px solid var(--border)", color:"var(--text)", borderRadius:8, width:30, height:30, cursor:"pointer", fontSize:16 }}>›</button>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
+            {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
+              <div key={d} style={{ fontSize:10, color:"var(--muted)", textAlign:"center", padding:"3px 0", fontWeight:700 }}>{d}</div>
+            ))}
+            {allDays.map((d, i) => {
+              if (!d) return <div key={"b"+i} />;
+              const ds = fmtDate(year, month, d);
+              const isPast = new Date(year, month, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+              const isSel = selectedDate === ds;
+              const isTdy = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+              return (
+                <div key={d} className="cal-day" onClick={() => !isPast && onSelect(ds)} style={{
+                  fontSize:13, textAlign:"center", padding:"7px 0", borderRadius:"50%",
+                  background: isSel ? "var(--accent)" : isTdy ? "var(--accent-soft)" : "transparent",
+                  color: isSel ? "#0f1117" : "var(--text)",
+                  fontWeight: isTdy ? 700 : 400,
+                  opacity: isPast ? 0.3 : 1,
+                  cursor: isPast ? "not-allowed" : "pointer",
+                  transition:"background 0.15s",
+                }}>{d}</div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Main App ──────────────────────────────────────────────────────────────
+    function App() {
+      const [step, setStep] = useState(0);
+      const [animKey, setAnimKey] = useState(0);
+      const [office, setOffice] = useState(null);
+      const [doctor, setDoctor] = useState(null);
+      const [profile, setProfile] = useState(null);
+      const [date, setDate] = useState("");
+      const [time, setTime] = useState("");
+      const [calY, setCalY] = useState(new Date().getFullYear());
+      const [calM, setCalM] = useState(new Date().getMonth());
+      const [slots, setSlots] = useState([]);
+      const [form, setForm] = useState({ first:"", last:"", dob:"", email:"", phone:"", reason:"" });
+      const [done, setDone] = useState(false);
+
+      const doctors = MOCK_DOCTORS.filter(d => d.office_id === office?.id);
+      useEffect(() => { if (date && doctor) setSlots(generateSlots(doctor.id)); }, [date, doctor]);
+
+      const go = s => { setAnimKey(k => k+1); setStep(s); };
+      const prevM = () => calM === 0 ? (setCalY(y=>y-1), setCalM(11)) : setCalM(m=>m-1);
+      const nextM = () => calM === 11 ? (setCalY(y=>y+1), setCalM(0)) : setCalM(m=>m+1);
+
+      // ── Confirmed Screen ───────────────────────────────────────────────────
+      if (done) return (
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div style={{ maxWidth:520, width:"100%", background:"var(--surface)", borderRadius:24, border:"1px solid var(--border)", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", padding:"48px 40px", textAlign:"center" }}>
+            <div style={{ fontSize:44, color:"var(--accent)", marginBottom:16 }}>✦</div>
+            <h2 style={{ fontFamily:"'DM Serif Display',serif", fontSize:28, marginBottom:8 }}>Appointment Confirmed</h2>
+            <p style={{ color:"var(--muted)", marginBottom:28 }}>{form.first} {form.last} — {profile?.name}</p>
+            <div style={{ background:"var(--card)", borderRadius:14, border:"1px solid var(--border)", padding:"4px 20px", marginBottom:16, textAlign:"left" }}>
+              {[["Provider", `Dr. ${doctor?.first_name} ${doctor?.last_name}`],["Location", office?.name],["Date & Time", `${date} at ${time}`],["Duration", `${profile?.duration} min`]].map(([l,v]) => (
+                <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid var(--border)", fontSize:14 }}>
+                  <span style={{ fontSize:11, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</span>
+                  <span>{v}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize:13, color:"var(--muted)", marginBottom:28 }}>Confirmation sent to {form.email}</p>
+            <button className="btn-primary" onClick={() => { setDone(false); setStep(0); setOffice(null); setDoctor(null); setProfile(null); setDate(""); setTime(""); setForm({first:"",last:"",dob:"",email:"",phone:"",reason:""}); }} style={{ background:"var(--accent)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 32px", fontSize:14, fontWeight:700, cursor:"pointer", transition:"all 0.2s" }}>
+              Book Another
+            </button>
+          </div>
+        </div>
+      );
+
+      // ── Main Widget ────────────────────────────────────────────────────────
+      const canContinue = [!!office, !!doctor, !!profile, !!(date && time)][step] ?? true;
+
+      return (
+        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 16px" }}>
+          <div style={{ maxWidth:680, width:"100%", background:"var(--surface)", borderRadius:24, border:"1px solid var(--border)", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", padding:"36px 40px" }}>
+
+            {/* Header */}
+            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:28 }}>
+              <span style={{ fontSize:26, color:"var(--accent)" }}>✦</span>
+              <div>
+                <div style={{ fontFamily:"'DM Serif Display',serif", fontSize:22, fontWeight:600 }}>Book an Appointment</div>
+                <div style={{ fontSize:12, color:"var(--muted)", letterSpacing:"0.04em" }}>Powered by DrChrono</div>
+              </div>
+            </div>
+
+            <StepIndicator steps={["Location","Provider","Type","Schedule","Details"]} current={step} />
+
+            <div key={animKey} className="step-anim" style={{ minHeight:320 }}>
+
+              {/* Step 0 – Office */}
+              {step === 0 && (
+                <div>
+                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Choose a Location</h3>
+                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>Select the office you'd like to visit.</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                    {MOCK_OFFICES.map(o => (
+                      <div key={o.id} className="card-item" onClick={() => setOffice(o)} style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", borderRadius:14, border: office?.id===o.id ? "2px solid var(--accent)" : "2px solid var(--border)", background: office?.id===o.id ? "var(--card-active)" : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
+                        <span style={{ fontSize:22 }}>🏥</span>
+                        <div>
+                          <div style={{ fontWeight:600, marginBottom:2 }}>{o.name}</div>
+                          <div style={{ fontSize:13, color:"var(--muted)" }}>{o.address}</div>
+                        </div>
+                        {office?.id===o.id && <div style={{ position:"absolute", right:16, width:24, height:24, borderRadius:"50%", background:"var(--accent)", color:"#0f1117", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700 }}>✓</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 1 – Doctor */}
+              {step === 1 && (
+                <div>
+                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Choose a Provider</h3>
+                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>Available at {office?.name}</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                    {doctors.map(d => (
+                      <div key={d.id} className="card-item" onClick={() => setDoctor(d)} style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", borderRadius:14, border: doctor?.id===d.id ? "2px solid var(--accent)" : "2px solid var(--border)", background: doctor?.id===d.id ? "var(--card-active)" : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
+                        <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#6eb5ff33,#a78bfa33)", border:"2px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"var(--accent)", flexShrink:0 }}>
+                          {d.first_name[0]}{d.last_name[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight:600, marginBottom:2 }}>Dr. {d.first_name} {d.last_name}</div>
+                          <div style={{ fontSize:13, color:"var(--muted)" }}>{d.specialty}</div>
+                        </div>
+                        {doctor?.id===d.id && <div style={{ position:"absolute", right:16, width:24, height:24, borderRadius:"50%", background:"var(--accent)", color:"#0f1117", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700 }}>✓</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2 – Appointment Type */}
+              {step === 2 && (
+                <div>
+                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Appointment Type</h3>
+                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>What kind of visit do you need?</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    {MOCK_PROFILES.map(p => (
+                      <div key={p.id} className="card-item" onClick={() => setProfile(p)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:12, border: profile?.id===p.id ? `2px solid ${p.color}` : "2px solid var(--border)", background: profile?.id===p.id ? `${p.color}18` : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
+                        <div style={{ width:12, height:12, borderRadius:"50%", background:p.color, flexShrink:0 }} />
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>{p.name}</div>
+                          <div style={{ fontSize:12, color:"var(--muted)" }}>{p.duration} min</div>
+                        </div>
+                        {profile?.id===p.id && <div style={{ width:22, height:22, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700 }}>✓</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3 – Schedule */}
+              {step === 3 && (
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24 }}>
+                  <div>
+                    <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:18, marginBottom:14 }}>Pick a Date</h3>
+                    <Calendar selectedDate={date} onSelect={d => { setDate(d); setTime(""); }} year={calY} month={calM} onPrev={prevM} onNext={nextM} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:18, marginBottom:14 }}>Available Times</h3>
+                    {!date ? (
+                      <p style={{ color:"var(--muted)", fontSize:13, marginTop:8 }}>Select a date first</p>
+                    ) : (
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, maxHeight:260, overflowY:"auto" }}>
+                        {slots.map(s => (
+                          <div key={s.time} className="slot" onClick={() => s.available && setTime(s.time)} style={{ padding:"10px 8px", borderRadius:9, fontSize:13, fontWeight:500, textAlign:"center", background: time===s.time ? "var(--accent)" : s.available ? "var(--card)" : "var(--surface)", color: time===s.time ? "#0f1117" : s.available ? "var(--text)" : "var(--muted)", border: time===s.time ? "2px solid var(--accent)" : "2px solid var(--border)", cursor: s.available ? "pointer" : "not-allowed", textDecoration: !s.available ? "line-through" : "none", opacity: !s.available ? 0.4 : 1, transition:"all 0.15s" }}>
+                            {s.time}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4 – Patient Info */}
+              {step === 4 && (
+                <div>
+                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Your Information</h3>
+                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>We'll use this to confirm your appointment.</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:24 }}>
+                    {[["First Name","first","Jane","text"],["Last Name","last","Smith","text"],["Date of Birth","dob","","date"],["Phone","phone","(415) 555-0100","tel"]].map(([label, key, ph, type]) => (
+                      <div key={key} style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                        <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</label>
+                        <input className="field" type={type} placeholder={ph} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})} />
+                      </div>
+                    ))}
+                    <div style={{ gridColumn:"1/-1", display:"flex", flexDirection:"column", gap:6 }}>
+                      <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Email</label>
+                      <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                    </div>
+                    <div style={{ gridColumn:"1/-1", display:"flex", flexDirection:"column", gap:6 }}>
+                      <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Reason for Visit <span style={{ color:"var(--muted)", fontWeight:400, textTransform:"none" }}>(optional)</span></label>
+                      <textarea className="field" rows={3} placeholder="Briefly describe your symptoms..." value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} />
+                    </div>
+                  </div>
+                  {/* Summary */}
+                  <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"var(--accent)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Appointment Summary</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"auto 1fr", gap:"8px 16px", fontSize:14, alignItems:"center" }}>
+                      {[["Provider", `Dr. ${doctor?.first_name} ${doctor?.last_name}`],["Type", profile?.name],["Date", date],["Time", time],["Duration", `${profile?.duration} min`]].map(([l,v]) => (
+                        <React.Fragment key={l}>
+                          <span style={{ fontSize:11, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.04em" }}>{l}</span>
+                          <span>{v}</span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Nav Buttons */}
+            <div style={{ display:"flex", alignItems:"center", marginTop:32, gap:12 }}>
+              {step > 0 && (
+                <button className="btn-secondary" onClick={() => go(step-1)} style={{ background:"transparent", color:"var(--muted)", border:"1.5px solid var(--border)", borderRadius:12, padding:"12px 20px", fontSize:14, fontWeight:500, cursor:"pointer", transition:"all 0.2s" }}>
+                  ← Back
+                </button>
+              )}
+              <div style={{ flex:1 }} />
+              {step < 4 && (
+                <button className="btn-primary" onClick={() => canContinue && go(step+1)} style={{ background:"var(--accent)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 28px", fontSize:14, fontWeight:700, cursor: canContinue ? "pointer" : "not-allowed", opacity: canContinue ? 1 : 0.4, transition:"all 0.2s" }}>
+                  Continue →
+                </button>
+              )}
+              {step === 4 && (
+                <button className="btn-primary" onClick={() => { if (form.first && form.last && form.email) setDone(true); }} style={{ background:"linear-gradient(135deg,#6eb5ff,#a78bfa)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 28px", fontSize:14, fontWeight:700, cursor: (form.first&&form.last&&form.email) ? "pointer" : "not-allowed", opacity: (form.first&&form.last&&form.email) ? 1 : 0.4, transition:"all 0.2s" }}>
+                  Confirm Appointment ✦
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
