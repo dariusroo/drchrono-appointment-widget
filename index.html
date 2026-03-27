@@ -255,7 +255,7 @@
         } else {
           const cr = await fetch(`${API}/api/patients`,{
             method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone}),
+            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone,doctor:523137}),
           });
           const newPt = await cr.json();
           if(!cr.ok) throw new Error(JSON.stringify(newPt));
