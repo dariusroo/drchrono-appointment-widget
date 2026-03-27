@@ -12,20 +12,20 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:           #ffffff;
-      --surface:      #ffffff;
-      --soft:         #f7f7f5;
-      --soft2:        #f0efeb;
-      --border:       #e8e6e0;
-      --border2:      #d4d0c8;
-      --text:         #1a1a1a;
-      --text2:        #444440;
-      --muted:        #888880;
-      --accent:       #2d6a4f;   /* forest green — medical, fresh, weight-loss */
-      --accent-light: #2d6a4f18;
-      --accent2:      #1b4332;
-      --teal:         #52b69a;
-      --teal-soft:    #52b69a20;
+      --bg:           #FFFDF5;
+      --surface:      #FFFDF5;
+      --soft:         #EBDDCF;
+      --soft2:        #D4C1B0;
+      --border:       #D4C1B0;
+      --border2:      #7D4E4E;
+      --text:         #4A0E0E;
+      --text2:        #4A0E0E;
+      --muted:        #7D4E4E;
+      --accent:       #4A0E0E;
+      --accent-light: #4A0E0E18;
+      --accent2:      #3a0b0b;
+      --teal:         #7D4E4E;
+      --teal-soft:    #7D4E4E20;
       --warn:         #e76f51;
     }
     html, body, #root {
@@ -60,13 +60,13 @@
     .field::placeholder { color: var(--muted); }
 
     .card-sel { transition: all 0.18s ease; cursor: pointer; }
-    .card-sel:hover { border-color: var(--accent) !important; box-shadow: 0 4px 16px rgba(45,106,79,0.1); transform: translateY(-1px); }
+    .card-sel:hover { border-color: var(--accent) !important; box-shadow: 0 4px 16px rgba(74,14,14,0.1); transform: translateY(-1px); }
 
     .slot-btn { transition: all 0.15s ease; cursor: pointer; }
     .slot-btn:hover { border-color: var(--accent) !important; background: var(--accent-light) !important; }
 
     .btn-primary { transition: all 0.2s ease; }
-    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(45,106,79,0.25); }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(74,14,14,0.25); }
     .btn-back { transition: all 0.2s ease; }
     .btn-back:hover { background: var(--soft2) !important; }
 
@@ -86,7 +86,7 @@
   // ── Data — replace with real DrChrono API calls ───────────────────────────
   // GET /api/doctors  (Dr. Roohani is the only provider; add more as you scale)
   const DOCTORS = [
-    { id: 101, first: "Darius", last: "Roohani", cred: "MD, ABIM, ABOM", bio: "Board-certified in Internal Medicine & Obesity Medicine", states: "CA · NV", rating: "4.8★" },
+    { id: 101, first: "Darius", last: "Roohani", cred: "MD", bio: "Board-certified in Internal Medicine & Obesity Medicine", states: "CA · NV", rating: "4.8★" },
   ];
 
   // GET /api/appointment_profiles
@@ -96,24 +96,6 @@
       duration: 30, icon: "◆",
       desc: "Comprehensive first visit — medical history, goals, and personalized weight loss plan.",
       badge: "Most popular",
-    },
-    {
-      id: 202, name: "Follow-Up Visit", price: "Included",
-      duration: 20, icon: "◇",
-      desc: "Review progress, adjust medications, and refine your plan.",
-      badge: null,
-    },
-    {
-      id: 203, name: "Medication Check-In", price: "Included",
-      duration: 15, icon: "◈",
-      desc: "Quick check on side effects, dosing, and how your medication is working.",
-      badge: null,
-    },
-    {
-      id: 204, name: "Progress Review", price: "Included",
-      duration: 20, icon: "◉",
-      desc: "Comprehensive progress assessment and lifestyle plan adjustment.",
-      badge: null,
     },
   ];
 
@@ -129,6 +111,7 @@
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const pad = n => String(n).padStart(2,"0");
+  const toAmPm = t => { if (!t) return t; const [h,m] = t.split(":").map(Number); return `${h%12||12}:${pad(m)} ${h<12?"AM":"PM"}`; };
   const fmt = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
   const prettyDate = s => {
     if (!s) return "";
@@ -264,7 +247,7 @@
             <div style={{background:"var(--soft)",borderRadius:16,border:"1.5px solid var(--border)",overflow:"hidden",marginBottom:28,textAlign:"left"}}>
               {[
                 ["Visit type", profile?.name],
-                ["Date & time", `${prettyDate(date)} at ${time}`],
+                ["Date & time", `${prettyDate(date)} at ${toAmPm(time)}`],
                 ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
                 ["State", state],
                 ["Confirmation to", form.email],
@@ -275,7 +258,7 @@
                 </div>
               ))}
             </div>
-            <div style={{background:"#f0faf5",border:"1px solid #b7dfc9",borderRadius:12,padding:"14px 20px",marginBottom:28,fontSize:13,color:"var(--accent2)",lineHeight:1.6,textAlign:"left"}}>
+            <div style={{background:"var(--soft)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 20px",marginBottom:28,fontSize:13,color:"var(--accent2)",lineHeight:1.6,textAlign:"left"}}>
               <strong>What to expect:</strong> You'll receive a video visit link via email. The visit is 100% online — no commute, no waiting room. Have your insurance card handy if you'd like us to check coverage.
             </div>
             <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setState("");setForm({first:"",last:"",dob:"",email:"",phone:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
@@ -295,7 +278,7 @@
         </div>
 
         {/* Nav */}
-        <div style={{padding:"16px 32px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",position:"sticky",top:0,zIndex:10}}>
+        <div style={{padding:"16px 32px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--bg)",position:"sticky",top:0,zIndex:10}}>
           <Logo/>
           <div style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>
             100% Online · CA &amp; NV
@@ -304,12 +287,12 @@
 
         {/* Hero banner — only on step 0 */}
         {step===0 && (
-          <div style={{background:"linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%)",padding:"28px 32px",textAlign:"center"}}>
-            <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontStyle:"italic",color:"#95d5b2",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Medical weight loss</p>
+          <div style={{background:"linear-gradient(135deg,#3a0b0b 0%,#4A0E0E 100%)",padding:"28px 32px",textAlign:"center"}}>
+            <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontStyle:"italic",color:"#EBDDCF",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Medical weight loss</p>
             <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:300,color:"#ffffff",letterSpacing:"-0.01em",lineHeight:1.25,marginBottom:6}}>
-              Start with medication. <em style={{fontStyle:"italic",color:"#95d5b2"}}>Finish without it.</em>
+              Start with medication. <em style={{fontStyle:"italic",color:"#EBDDCF"}}>Finish without it.</em>
             </h1>
-            <p style={{fontSize:13,color:"#b7e4c7",fontWeight:300}}>Ozempic® · Semaglutide · Tirzepatide · Physician-led</p>
+            <p style={{fontSize:13,color:"#D4C1B0",fontWeight:300}}>Ozempic® · Semaglutide · Tirzepatide · Physician-led</p>
           </div>
         )}
 
@@ -327,7 +310,7 @@
 
                 {/* Doctor pill */}
                 <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:"var(--soft)",borderRadius:12,border:"1.5px solid var(--border)",marginBottom:20}}>
-                  <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#d8f3dc,#b7e4c7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"var(--accent2)",flexShrink:0,fontFamily:"'Cormorant Garamond',serif"}}>DR</div>
+                  <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#EBDDCF,#D4C1B0)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"var(--accent2)",flexShrink:0,fontFamily:"'Cormorant Garamond',serif"}}>DR</div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:600,fontSize:14}}>Dr. Darius Roohani, {doctor.cred}</div>
                     <div style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{doctor.bio}</div>
@@ -341,7 +324,7 @@
                       display:"flex",alignItems:"flex-start",gap:16,padding:"18px 20px",
                       borderRadius:14,
                       border:profile?.id===p.id?"2px solid var(--accent)":"1.5px solid var(--border)",
-                      background:profile?.id===p.id?"#f0faf5":"var(--soft)",
+                      background:profile?.id===p.id?"var(--accent-light)":"var(--soft)",
                       position:"relative",
                     }}>
                       <div style={{fontSize:18,color:profile?.id===p.id?"var(--accent)":"var(--muted)",marginTop:2,flexShrink:0}}>{p.icon}</div>
@@ -409,15 +392,15 @@
                             cursor:s.avail?"pointer":"not-allowed",
                             textDecoration:!s.avail?"line-through":"none",
                             opacity:!s.avail?0.5:1,
-                          }}>{s.time}</div>
+                          }}>{toAmPm(s.time)}</div>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
                 {date&&time&&(
-                  <div style={{marginTop:16,padding:"11px 16px",background:"#f0faf5",borderRadius:10,border:"1px solid #b7dfc9",fontSize:13,color:"var(--accent2)",fontWeight:500}}>
-                    ✓ &nbsp;{prettyDate(date)} at {time} PT · {state}
+                  <div style={{marginTop:16,padding:"11px 16px",background:"var(--soft)",borderRadius:10,border:"1px solid var(--border)",fontSize:13,color:"var(--accent2)",fontWeight:500}}>
+                    ✓ &nbsp;{prettyDate(date)} at {toAmPm(time)} PT · {state}
                   </div>
                 )}
               </div>
@@ -464,7 +447,7 @@
                   {[
                     ["Visit type", `${profile?.name} — ${profile?.price}`],
                     ["Date", prettyDate(date)],
-                    ["Time", `${time} PT`],
+                    ["Time", `${toAmPm(time)} PT`],
                     ["State", state],
                     ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
                     ["Format", "Video visit (link sent by email)"],
@@ -480,7 +463,7 @@
                 </div>
 
                 {profile?.id===201 && (
-                  <div style={{background:"#f0faf5",border:"1px solid #b7dfc9",borderRadius:12,padding:"14px 18px",fontSize:13,color:"var(--accent2)",lineHeight:1.65,marginBottom:16}}>
+                  <div style={{background:"var(--soft)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 18px",fontSize:13,color:"var(--accent2)",lineHeight:1.65,marginBottom:16}}>
                     <strong>Your $99 initial consultation includes:</strong> full medical history review, personalized medication recommendation, and your custom weight loss roadmap — including a plan to eventually get off medication.
                   </div>
                 )}
