@@ -205,7 +205,7 @@
     const [slots,setSlots]=useState([]);
     const [slotsLoading,setSlotsLoading]=useState(false);
     const [state,setState]=useState("");
-    const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",gender:"",reason:""});
+    const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",gender:"",address:"",city:"",zip:"",reason:""});
     const [done,setDone]=useState(false);
     const [submitting,setSubmitting]=useState(false);
     const [submitError,setSubmitError]=useState("");
@@ -239,7 +239,7 @@
 
     const canStep0=!!profile;
     const canStep1=!!(date&&time&&state);
-    const canStep2=!!(form.first&&form.last&&form.email&&form.phone&&form.dob&&form.gender);
+    const canStep2=!!(form.first&&form.last&&form.email&&form.phone&&form.dob&&form.gender&&form.address&&form.city&&form.zip);
     const progressPct = [0,25,50,75,100][Math.min(step+(done?1:0),4)];
 
     async function handleConfirm() {
@@ -255,7 +255,7 @@
         } else {
           const cr = await fetch(`${API}/api/patients`,{
             method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone,doctor:523137}),
+            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone,doctor:523137,address:form.address,city:form.city,state:state==="California"?"CA":"NV",zip_code:form.zip}),
           });
           const newPt = await cr.json();
           if(!cr.ok) throw new Error(JSON.stringify(newPt));
@@ -305,7 +305,7 @@
             <div style={{background:"var(--soft)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 20px",marginBottom:28,fontSize:13,color:"var(--accent2)",lineHeight:1.6,textAlign:"left"}}>
               <strong>What to expect:</strong> You'll receive a video visit link via email. The visit is 100% online — no commute, no waiting room. Have your insurance card handy if you'd like us to check coverage.
             </div>
-            <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setTimeDisplay("");setState("");setSlots([]);setSubmitError("");setForm({first:"",last:"",dob:"",email:"",phone:"",gender:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
+            <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setTimeDisplay("");setState("");setSlots([]);setSubmitError("");setForm({first:"",last:"",dob:"",email:"",phone:"",gender:"",address:"",city:"",zip:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
               Book Another Visit
             </button>
           </div>
@@ -487,6 +487,18 @@
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Email</label>
                     <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
+                  </div>
+                  <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Street address</label>
+                    <input className="field" type="text" placeholder="123 Main St" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>City</label>
+                    <input className="field" type="text" placeholder="Los Angeles" value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>ZIP code</label>
+                    <input className="field" type="text" placeholder="90001" value={form.zip} onChange={e=>setForm({...form,zip:e.target.value})}/>
                   </div>
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
