@@ -246,16 +246,23 @@
       setSubmitting(true); setSubmitError("");
       try {
         // 1. Find or create patient
+        const stateAbbr = state==="California"?"CA":"NV";
+        const patientPayload = {first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone,doctor:523137,address:form.address,city:form.city,state:stateAbbr,zip_code:form.zip};
         let patientId;
         const search = await fetch(`${API}/api/patients?first_name=${encodeURIComponent(form.first)}&last_name=${encodeURIComponent(form.last)}&date_of_birth=${form.dob}`);
         const searchData = await search.json();
         const existing = searchData.results?.[0];
         if (existing) {
           patientId = existing.id;
+          // Update address and contact info for existing patient
+          await fetch(`${API}/api/patients/${patientId}`,{
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({address:form.address,city:form.city,state:stateAbbr,zip_code:form.zip,email:form.email,cell_phone:form.phone}),
+          });
         } else {
           const cr = await fetch(`${API}/api/patients`,{
             method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone,doctor:523137,address:form.address,city:form.city,state:state==="California"?"CA":"NV",zip_code:form.zip}),
+            body:JSON.stringify(patientPayload),
           });
           const newPt = await cr.json();
           if(!cr.ok) throw new Error(JSON.stringify(newPt));
