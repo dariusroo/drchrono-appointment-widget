@@ -233,6 +233,26 @@
         .catch(()=>{ setSlots([]); setSlotsLoading(false); });
     },[date]);
 
+    // Autofill form when first + last + DOB are all entered
+    useEffect(()=>{
+      if(!form.first||!form.last||!form.dob) return;
+      fetch(`${API}/api/patients?first_name=${encodeURIComponent(form.first)}&last_name=${encodeURIComponent(form.last)}&date_of_birth=${form.dob}`)
+        .then(r=>r.json())
+        .then(data=>{
+          const p = data.results?.[0];
+          if(!p) return;
+          setForm(f=>({...f,
+            email: p.email||f.email,
+            phone: p.cell_phone||p.home_phone||f.phone,
+            gender: p.gender||f.gender,
+            address: p.address||f.address,
+            city: p.city||f.city,
+            zip: p.zip_code||f.zip,
+          }));
+        })
+        .catch(()=>{});
+    },[form.first, form.last, form.dob]);
+
     const go=s=>{setAnimKey(k=>k+1);setStep(s);};
     const prevM=()=>cm===0?(setCy(y=>y-1),setCm(11)):setCm(m=>m-1);
     const nextM=()=>cm===11?(setCy(y=>y+1),setCm(0)):setCm(m=>m+1);
