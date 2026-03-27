@@ -83,35 +83,20 @@
 <script type="text/babel">
   const { useState, useEffect } = React;
 
-  // ── Data — replace with real DrChrono API calls ───────────────────────────
-  // GET /api/doctors  (Dr. Roohani is the only provider; add more as you scale)
-  const DOCTORS = [
-    { id: 101, first: "Darius", last: "Roohani", cred: "MD", bio: "Board-certified in Internal Medicine & Obesity Medicine", states: "CA · NV", rating: "4.8★" },
-  ];
+  const API = 'https://yooshmd-api.vercel.app';
 
-  // GET /api/appointment_profiles
-  const PROFILES = [
-    {
-      id: 201, name: "Initial Consultation", price: "$99",
-      duration: 30, icon: "◆",
-      desc: "Comprehensive first visit — medical history, goals, and personalized weight loss plan.",
-      badge: "Most popular",
-    },
-  ];
+  const DOCTOR = { first: "Darius", last: "Roohani", cred: "MD", bio: "Board-certified in Internal Medicine & Obesity Medicine", rating: "4.8★" };
 
-  // GET /api/appointment_templates?verbose=true  →  open_slots
-  // Then cross-reference GET /api/appointments?date=  to remove booked slots
-  const getSlots = () => {
-    const booked = ["09:00","10:30","13:00","15:00"];
-    const all = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"];
-    return all.map(t => ({ time: t, avail: !booked.includes(t) }));
+  // Static display fields merged onto live profile data
+  const PROFILE_META = {
+    default: { price: "$99", icon: "◆", desc: "Comprehensive first visit — medical history, goals, and personalized weight loss plan.", badge: "Most popular" },
   };
 
   const STATES = ["California", "Nevada"];
+  const GENDERS = ["Male", "Female", "Other"];
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const pad = n => String(n).padStart(2,"0");
-  const toAmPm = t => { if (!t) return t; const [h,m] = t.split(":").map(Number); return `${h%12||12}:${pad(m)} ${h<12?"AM":"PM"}`; };
   const fmt = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
   const prettyDate = s => {
     if (!s) return "";
@@ -210,26 +195,85 @@
   function App() {
     const [step,setStep]=useState(0);
     const [animKey,setAnimKey]=useState(0);
+    const [profiles,setProfiles]=useState([]);
     const [profile,setProfile]=useState(null);
     const [date,setDate]=useState("");
-    const [time,setTime]=useState("");
+    const [time,setTime]=useState("");        // full ISO datetime for API
+    const [timeDisplay,setTimeDisplay]=useState(""); // "9:00 AM" for UI
     const [cy,setCy]=useState(new Date().getFullYear());
     const [cm,setCm]=useState(new Date().getMonth());
     const [slots,setSlots]=useState([]);
+    const [slotsLoading,setSlotsLoading]=useState(false);
     const [state,setState]=useState("");
-    const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",reason:""});
+    const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",gender:"",reason:""});
     const [done,setDone]=useState(false);
-    const doctor=DOCTORS[0];
+    const [submitting,setSubmitting]=useState(false);
+    const [submitError,setSubmitError]=useState("");
+    const doctor=DOCTOR;
 
-    useEffect(()=>{ if(date) setSlots(getSlots()); },[date]);
+    // Fetch appointment profiles on mount
+    useEffect(()=>{
+      fetch(`${API}/api/appointment_profiles`)
+        .then(r=>r.json())
+        .then(data=>{
+          const meta = PROFILE_META.default;
+          setProfiles((data.results||[]).map(p=>({...p,...meta})));
+        })
+        .catch(()=>setProfiles([{id:969506,name:"Initial Consultation",duration:30,...PROFILE_META.default}]));
+    },[]);
+
+    // Fetch available slots whenever date changes
+    useEffect(()=>{
+      if(!date) return;
+      setSlotsLoading(true);
+      setTime(""); setTimeDisplay("");
+      fetch(`${API}/api/slots?date=${date}`)
+        .then(r=>r.json())
+        .then(data=>{ setSlots(data.slots||[]); setSlotsLoading(false); })
+        .catch(()=>{ setSlots([]); setSlotsLoading(false); });
+    },[date]);
+
     const go=s=>{setAnimKey(k=>k+1);setStep(s);};
     const prevM=()=>cm===0?(setCy(y=>y-1),setCm(11)):setCm(m=>m-1);
     const nextM=()=>cm===11?(setCy(y=>y+1),setCm(0)):setCm(m=>m+1);
 
     const canStep0=!!profile;
     const canStep1=!!(date&&time&&state);
-    const canStep2=!!(form.first&&form.last&&form.email&&form.phone);
+    const canStep2=!!(form.first&&form.last&&form.email&&form.phone&&form.dob&&form.gender);
     const progressPct = [0,25,50,75,100][Math.min(step+(done?1:0),4)];
+
+    async function handleConfirm() {
+      setSubmitting(true); setSubmitError("");
+      try {
+        // 1. Find or create patient
+        let patientId;
+        const search = await fetch(`${API}/api/patients?first_name=${encodeURIComponent(form.first)}&last_name=${encodeURIComponent(form.last)}&date_of_birth=${form.dob}`);
+        const searchData = await search.json();
+        const existing = searchData.results?.[0];
+        if (existing) {
+          patientId = existing.id;
+        } else {
+          const cr = await fetch(`${API}/api/patients`,{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({first_name:form.first,last_name:form.last,date_of_birth:form.dob,gender:form.gender,email:form.email,cell_phone:form.phone}),
+          });
+          const newPt = await cr.json();
+          if(!cr.ok) throw new Error(JSON.stringify(newPt));
+          patientId = newPt.id;
+        }
+        // 2. Book appointment
+        const ar = await fetch(`${API}/api/appointments`,{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({doctor:523137,office:555620,patient:patientId,scheduled_time:time,exam_room:1,duration:profile.duration,profile:profile.id,reason:form.reason||profile.name}),
+        });
+        const appt = await ar.json();
+        if(!ar.ok) throw new Error(JSON.stringify(appt));
+        setDone(true);
+      } catch(err) {
+        setSubmitError("Something went wrong. Please try again or call (909) 293-8095.");
+        console.error(err);
+      } finally { setSubmitting(false); }
+    }
 
     // ── Confirmed ────────────────────────────────────────────────────────────
     if (done) return (
@@ -247,7 +291,7 @@
             <div style={{background:"var(--soft)",borderRadius:16,border:"1.5px solid var(--border)",overflow:"hidden",marginBottom:28,textAlign:"left"}}>
               {[
                 ["Visit type", profile?.name],
-                ["Date & time", `${prettyDate(date)} at ${toAmPm(time)}`],
+                ["Date & time", `${prettyDate(date)} at ${timeDisplay}`],
                 ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
                 ["State", state],
                 ["Confirmation to", form.email],
@@ -261,7 +305,7 @@
             <div style={{background:"var(--soft)",border:"1px solid var(--border)",borderRadius:12,padding:"14px 20px",marginBottom:28,fontSize:13,color:"var(--accent2)",lineHeight:1.6,textAlign:"left"}}>
               <strong>What to expect:</strong> You'll receive a video visit link via email. The visit is 100% online — no commute, no waiting room. Have your insurance card handy if you'd like us to check coverage.
             </div>
-            <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setState("");setForm({first:"",last:"",dob:"",email:"",phone:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
+            <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setTimeDisplay("");setState("");setSlots([]);setSubmitError("");setForm({first:"",last:"",dob:"",email:"",phone:"",gender:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
               Book Another Visit
             </button>
           </div>
@@ -319,7 +363,7 @@
                 </div>
 
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                  {PROFILES.map(p=>(
+                  {profiles.map(p=>(
                     <div key={p.id} className="card-sel" onClick={()=>setProfile(p)} style={{
                       display:"flex",alignItems:"flex-start",gap:16,padding:"18px 20px",
                       borderRadius:14,
@@ -381,18 +425,25 @@
                         <div style={{fontSize:24,opacity:0.25}}>◇</div>
                         <p style={{color:"var(--muted)",fontSize:12}}>Select a date first</p>
                       </div>
+                    ) : slotsLoading ? (
+                      <div style={{background:"var(--soft)",borderRadius:14,padding:24,border:"1.5px solid var(--border)",textAlign:"center",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <p style={{color:"var(--muted)",fontSize:12}}>Loading availability…</p>
+                      </div>
+                    ) : slots.length===0 ? (
+                      <div style={{background:"var(--soft)",borderRadius:14,padding:24,border:"1.5px solid var(--border)",textAlign:"center",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
+                        <div style={{fontSize:24,opacity:0.25}}>◇</div>
+                        <p style={{color:"var(--muted)",fontSize:12}}>No availability — try another date</p>
+                      </div>
                     ) : (
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,maxHeight:260,overflowY:"auto"}}>
                         {slots.map(s=>(
-                          <div key={s.time} className={s.avail?"slot-btn":""} onClick={()=>s.avail&&setTime(s.time)} style={{
+                          <div key={s.datetime} className="slot-btn" onClick={()=>{setTime(s.datetime);setTimeDisplay(s.display);}} style={{
                             padding:"10px 6px",borderRadius:9,fontSize:12,fontWeight:500,textAlign:"center",
-                            background:time===s.time?"var(--accent)":s.avail?"var(--soft)":"var(--bg)",
-                            color:time===s.time?"#fff":s.avail?"var(--text)":"var(--border2)",
-                            border:time===s.time?"2px solid var(--accent)":"1.5px solid var(--border)",
-                            cursor:s.avail?"pointer":"not-allowed",
-                            textDecoration:!s.avail?"line-through":"none",
-                            opacity:!s.avail?0.5:1,
-                          }}>{toAmPm(s.time)}</div>
+                            background:time===s.datetime?"var(--accent)":"var(--soft)",
+                            color:time===s.datetime?"#fff":"var(--text)",
+                            border:time===s.datetime?"2px solid var(--accent)":"1.5px solid var(--border)",
+                            cursor:"pointer",
+                          }}>{s.display}</div>
                         ))}
                       </div>
                     )}
@@ -400,7 +451,7 @@
                 </div>
                 {date&&time&&(
                   <div style={{marginTop:16,padding:"11px 16px",background:"var(--soft)",borderRadius:10,border:"1px solid var(--border)",fontSize:13,color:"var(--accent2)",fontWeight:500}}>
-                    ✓ &nbsp;{prettyDate(date)} at {toAmPm(time)} PT · {state}
+                    ✓ &nbsp;{prettyDate(date)} at {timeDisplay} PT · {state}
                   </div>
                 )}
               </div>
@@ -420,6 +471,19 @@
                       <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
                     </div>
                   ))}
+                  <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Biological sex</label>
+                    <div style={{display:"flex",gap:10}}>
+                      {GENDERS.map(g=>(
+                        <div key={g} onClick={()=>setForm({...form,gender:g})} style={{
+                          flex:1,padding:"10px 0",borderRadius:10,textAlign:"center",fontSize:13,fontWeight:500,
+                          border:form.gender===g?"2px solid var(--accent)":"1.5px solid var(--border)",
+                          background:form.gender===g?"var(--accent-light)":"var(--soft)",
+                          color:form.gender===g?"var(--accent)":"var(--text2)",cursor:"pointer",transition:"all 0.15s",
+                        }}>{g}</div>
+                      ))}
+                    </div>
+                  </div>
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Email</label>
                     <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
@@ -447,7 +511,7 @@
                   {[
                     ["Visit type", `${profile?.name} — ${profile?.price}`],
                     ["Date", prettyDate(date)],
-                    ["Time", `${toAmPm(time)} PT`],
+                    ["Time", `${timeDisplay} PT`],
                     ["State", state],
                     ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
                     ["Format", "Video visit (link sent by email)"],
@@ -496,9 +560,12 @@
               </button>
             )}
             {step===3 && (
-              <button className="btn-primary" onClick={()=>setDone(true)} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 36px",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.02em"}}>
-                Confirm appointment ✓
-              </button>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:10}}>
+                {submitError && <div style={{fontSize:12,color:"var(--warn)",textAlign:"right"}}>{submitError}</div>}
+                <button className="btn-primary" onClick={handleConfirm} disabled={submitting} style={{background:submitting?"var(--border)":"var(--accent)",color:submitting?"var(--muted)":"#fff",border:"none",borderRadius:10,padding:"13px 36px",fontSize:13,fontWeight:600,cursor:submitting?"not-allowed":"pointer",letterSpacing:"0.02em"}}>
+                  {submitting ? "Booking…" : "Confirm appointment ✓"}
+                </button>
+              </div>
             )}
           </div>
 
