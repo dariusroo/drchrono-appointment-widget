@@ -1,383 +1,551 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Book an Appointment</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <!-- React + Babel via CDN — no npm/build needed -->
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YooshMD — Book Your Consultation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0f1117;
-      --surface: #171b26;
-      --card: #1e2333;
-      --card-active: #1a2540;
-      --border: #2a2f42;
-      --text: #e8ecf5;
-      --muted: #5a6280;
-      --accent: #6eb5ff;
-      --accent-soft: #6eb5ff18;
+      --bg:           #ffffff;
+      --surface:      #ffffff;
+      --soft:         #f7f7f5;
+      --soft2:        #f0efeb;
+      --border:       #e8e6e0;
+      --border2:      #d4d0c8;
+      --text:         #1a1a1a;
+      --text2:        #444440;
+      --muted:        #888880;
+      --accent:       #2d6a4f;   /* forest green — medical, fresh, weight-loss */
+      --accent-light: #2d6a4f18;
+      --accent2:      #1b4332;
+      --teal:         #52b69a;
+      --teal-soft:    #52b69a20;
+      --warn:         #e76f51;
     }
     html, body, #root {
-      height: 100%;
-      background: radial-gradient(ellipse at 20% 20%, #1a1f35 0%, #0f1117 60%);
-      font-family: 'DM Sans', sans-serif;
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
       color: var(--text);
+      -webkit-font-smoothing: antialiased;
     }
-    /* Allow page to scroll if content is taller than viewport */
     body { overflow-y: auto; }
-    @keyframes fadeSlideIn {
-      from { opacity: 0; transform: translateY(14px); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .step-anim { animation: fadeSlideIn 0.35s ease both; }
+    .step-anim { animation: fadeUp 0.35s cubic-bezier(.22,.68,0,1.1) both; }
+
     .field {
-      background: var(--card);
+      background: var(--soft);
       border: 1.5px solid var(--border);
       color: var(--text);
       border-radius: 10px;
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
+      padding: 12px 16px;
+      font-family: 'Inter', sans-serif;
       font-size: 14px;
       width: 100%;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
       resize: none;
     }
-    .field:focus { border-color: var(--accent); }
+    .field:focus { border-color: var(--accent); background: #fff; }
     .field::placeholder { color: var(--muted); }
-    .cal-day:hover { background: var(--accent-soft) !important; }
-    .slot:hover { filter: brightness(1.12); }
-    .card-item:hover { border-color: var(--accent) !important; }
-    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+
+    .card-sel { transition: all 0.18s ease; cursor: pointer; }
+    .card-sel:hover { border-color: var(--accent) !important; box-shadow: 0 4px 16px rgba(45,106,79,0.1); transform: translateY(-1px); }
+
+    .slot-btn { transition: all 0.15s ease; cursor: pointer; }
+    .slot-btn:hover { border-color: var(--accent) !important; background: var(--accent-light) !important; }
+
+    .btn-primary { transition: all 0.2s ease; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(45,106,79,0.25); }
+    .btn-back { transition: all 0.2s ease; }
+    .btn-back:hover { background: var(--soft2) !important; }
+
+    .cal-day { transition: all 0.12s; border-radius: 50%; cursor: pointer; }
+    .cal-day:hover { background: var(--accent-light) !important; }
+
+    /* Progress bar at very top */
+    .progress-bar { height: 3px; background: var(--border); border-radius: 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); border-radius: 3px; transition: width 0.4s ease; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useEffect } = React;
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  // ── Data — replace with real DrChrono API calls ───────────────────────────
+  // GET /api/doctors  (Dr. Roohani is the only provider; add more as you scale)
+  const DOCTORS = [
+    { id: 101, first: "Darius", last: "Roohani", cred: "MD, ABIM, ABOM", bio: "Board-certified in Internal Medicine & Obesity Medicine", states: "CA · NV", rating: "4.8★" },
+  ];
 
-    // ── Mock DrChrono API Data ────────────────────────────────────────────────
-    // 🔧 REPLACE THESE with real fetch() calls using your DrChrono OAuth token
-    const MOCK_OFFICES = [
-      { id: 1, name: "Downtown Medical Center", address: "120 Market St, San Francisco, CA 94105" },
-      { id: 2, name: "Westside Health Clinic",  address: "4400 Geary Blvd, San Francisco, CA 94118" },
-    ];
-    const MOCK_DOCTORS = [
-      { id: 101, first_name: "Sarah",  last_name: "Chen",  specialty: "Internal Medicine", office_id: 1 },
-      { id: 102, first_name: "Marcus", last_name: "Webb",  specialty: "Family Medicine",   office_id: 1 },
-      { id: 103, first_name: "Priya",  last_name: "Nair",  specialty: "Cardiology",         office_id: 2 },
-    ];
-    const MOCK_PROFILES = [
-      { id: 201, name: "New Patient Visit", duration: 60, color: "#4A90D9" },
-      { id: 202, name: "Follow-Up",         duration: 30, color: "#7B68EE" },
-      { id: 203, name: "Annual Physical",   duration: 45, color: "#50C878" },
-      { id: 204, name: "Urgent Care",       duration: 20, color: "#FF6B6B" },
-    ];
-    const generateSlots = (doctorId) => {
-      const booked = { 101: ["09:00","10:30","14:00"], 102: ["09:30","11:00","15:30"], 103: ["10:00","13:00","16:00"] };
-      const all = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
-      return all.map(t => ({ time: t, available: !(booked[doctorId] || []).includes(t) }));
-    };
+  // GET /api/appointment_profiles
+  const PROFILES = [
+    {
+      id: 201, name: "Initial Consultation", price: "$99",
+      duration: 30, icon: "◆",
+      desc: "Comprehensive first visit — medical history, goals, and personalized weight loss plan.",
+      badge: "Most popular",
+    },
+    {
+      id: 202, name: "Follow-Up Visit", price: "Included",
+      duration: 20, icon: "◇",
+      desc: "Review progress, adjust medications, and refine your plan.",
+      badge: null,
+    },
+    {
+      id: 203, name: "Medication Check-In", price: "Included",
+      duration: 15, icon: "◈",
+      desc: "Quick check on side effects, dosing, and how your medication is working.",
+      badge: null,
+    },
+    {
+      id: 204, name: "Progress Review", price: "Included",
+      duration: 20, icon: "◉",
+      desc: "Comprehensive progress assessment and lifestyle plan adjustment.",
+      badge: null,
+    },
+  ];
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const pad = n => String(n).padStart(2,"0");
-    const fmtDate = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  // GET /api/appointment_templates?verbose=true  →  open_slots
+  // Then cross-reference GET /api/appointments?date=  to remove booked slots
+  const getSlots = () => {
+    const booked = ["09:00","10:30","13:00","15:00"];
+    const all = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"];
+    return all.map(t => ({ time: t, avail: !booked.includes(t) }));
+  };
 
-    // ── Step Indicator ────────────────────────────────────────────────────────
-    function StepIndicator({ steps, current }) {
-      return (
-        <div style={{ display:"flex", alignItems:"center", marginBottom:32 }}>
-          {steps.map((s, i) => (
+  const STATES = ["California", "Nevada"];
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  const prettyDate = s => {
+    if (!s) return "";
+    const [y,m,d] = s.split("-");
+    return `${MONTHS[+m-1]} ${+d}, ${y}`;
+  };
+
+  const STEPS = ["Visit Type", "Schedule", "Your Info", "Confirm"];
+
+  // ── Wordmark ───────────────────────────────────────────────────────────────
+  function Logo() {
+    return (
+      <div style={{display:"flex",alignItems:"baseline",gap:0,lineHeight:1}}>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:600,color:var_accent(),letterSpacing:"-0.01em"}}>Yoosh</span>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:300,fontStyle:"italic",color:var_text(),letterSpacing:"-0.01em"}}>MD</span>
+      </div>
+    );
+  }
+  function var_accent() { return "var(--accent)"; }
+  function var_text() { return "var(--text)"; }
+
+  // ── Step Bar ───────────────────────────────────────────────────────────────
+  function StepBar({ current }) {
+    return (
+      <div style={{marginBottom:32}}>
+        <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:8}}>
+          {STEPS.map((s,i) => (
             <React.Fragment key={i}>
-              <div style={{ display:"flex", alignItems:"center", flexDirection:"column", gap:4 }}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                 <div style={{
-                  width:30, height:30, borderRadius:"50%", display:"flex",
-                  alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700,
-                  background: i <= current ? "var(--accent)" : "transparent",
-                  border: i <= current ? "2px solid var(--accent)" : "2px solid var(--muted)",
-                  color: i <= current ? "#0f1117" : "var(--muted)",
-                  transform: i === current ? "scale(1.15)" : "scale(1)",
-                  transition: "all 0.3s",
+                  width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:11,fontWeight:600,
+                  background:i<current?"var(--accent)":i===current?"var(--text)":"transparent",
+                  border:i<current?"2px solid var(--accent)":i===current?"2px solid var(--text)":"2px solid var(--border2)",
+                  color:i<=current?"#fff":"var(--muted)",
+                  transition:"all 0.3s",
                 }}>
-                  {i < current ? "✓" : i + 1}
+                  {i<current ? "✓" : i+1}
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, color: i === current ? "var(--accent)" : i < current ? "var(--text)" : "var(--muted)", whiteSpace:"nowrap", letterSpacing:"0.04em" }}>
+                <span style={{fontSize:10,fontWeight:500,letterSpacing:"0.05em",textTransform:"uppercase",color:i===current?"var(--accent)":i<current?"var(--text2)":"var(--muted)",whiteSpace:"nowrap"}}>
                   {s}
                 </span>
               </div>
-              {i < steps.length - 1 && (
-                <div style={{ flex:1, height:2, background: i < current ? "var(--accent)" : "var(--border)", margin:"0 6px", marginBottom:18, borderRadius:1, transition:"background 0.3s" }} />
+              {i<STEPS.length-1 && (
+                <div style={{flex:1,height:1,marginBottom:18,background:i<current?"var(--accent)":"var(--border)",transition:"background 0.4s",margin:"0 8px",marginBottom:18}}/>
               )}
             </React.Fragment>
           ))}
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    // ── Calendar ──────────────────────────────────────────────────────────────
-    function Calendar({ selectedDate, onSelect, year, month, onPrev, onNext }) {
-      const days = new Date(year, month + 1, 0).getDate();
-      const firstDay = new Date(year, month, 1).getDay();
-      const today = new Date();
-      const blanks = Array(firstDay).fill(null);
-      const allDays = [...blanks, ...Array.from({ length: days }, (_, i) => i + 1)];
-      return (
-        <div style={{ background:"var(--card)", borderRadius:14, padding:18, border:"1px solid var(--border)" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-            <button onClick={onPrev} style={{ background:"transparent", border:"1px solid var(--border)", color:"var(--text)", borderRadius:8, width:30, height:30, cursor:"pointer", fontSize:16 }}>‹</button>
-            <span style={{ fontSize:15, fontWeight:600 }}>{MONTHS[month]} {year}</span>
-            <button onClick={onNext} style={{ background:"transparent", border:"1px solid var(--border)", color:"var(--text)", borderRadius:8, width:30, height:30, cursor:"pointer", fontSize:16 }}>›</button>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
-            {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
-              <div key={d} style={{ fontSize:10, color:"var(--muted)", textAlign:"center", padding:"3px 0", fontWeight:700 }}>{d}</div>
-            ))}
-            {allDays.map((d, i) => {
-              if (!d) return <div key={"b"+i} />;
-              const ds = fmtDate(year, month, d);
-              const isPast = new Date(year, month, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-              const isSel = selectedDate === ds;
-              const isTdy = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-              return (
-                <div key={d} className="cal-day" onClick={() => !isPast && onSelect(ds)} style={{
-                  fontSize:13, textAlign:"center", padding:"7px 0", borderRadius:"50%",
-                  background: isSel ? "var(--accent)" : isTdy ? "var(--accent-soft)" : "transparent",
-                  color: isSel ? "#0f1117" : "var(--text)",
-                  fontWeight: isTdy ? 700 : 400,
-                  opacity: isPast ? 0.3 : 1,
-                  cursor: isPast ? "not-allowed" : "pointer",
-                  transition:"background 0.15s",
-                }}>{d}</div>
-              );
-            })}
-          </div>
+  // ── Calendar ───────────────────────────────────────────────────────────────
+  function Calendar({ sel, onSel, y, m, onPrev, onNext }) {
+    const days = new Date(y,m+1,0).getDate();
+    const firstDay = new Date(y,m,1).getDay();
+    const today = new Date();
+    return (
+      <div style={{background:"var(--soft)",borderRadius:14,padding:18,border:"1.5px solid var(--border)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <button onClick={onPrev} style={{background:"none",border:"1.5px solid var(--border)",color:"var(--muted)",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <span style={{fontSize:14,fontWeight:600,color:"var(--text)",letterSpacing:"0.01em"}}>{MONTHS[m]} {y}</span>
+          <button onClick={onNext} style={{background:"none",border:"1.5px solid var(--border)",color:"var(--muted)",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
-      );
-    }
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+          {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=>(
+            <div key={d} style={{fontSize:10,color:"var(--muted)",textAlign:"center",padding:"3px 0",fontWeight:600,letterSpacing:"0.04em"}}>{d}</div>
+          ))}
+          {Array(firstDay).fill(null).map((_,i)=><div key={"b"+i}/>)}
+          {Array.from({length:days},(_,i)=>i+1).map(d=>{
+            const ds=fmt(y,m,d);
+            const isPast=new Date(y,m,d)<new Date(today.getFullYear(),today.getMonth(),today.getDate());
+            const isSel=sel===ds;
+            const isTdy=d===today.getDate()&&m===today.getMonth()&&y===today.getFullYear();
+            const isWknd=new Date(y,m,d).getDay()===0||new Date(y,m,d).getDay()===6;
+            return (
+              <div key={d} className={isPast||isWknd?"":"cal-day"} onClick={()=>!isPast&&!isWknd&&onSel(ds)} style={{
+                fontSize:12,textAlign:"center",padding:"6px 0",borderRadius:"50%",
+                background:isSel?"var(--accent)":"transparent",
+                color:isSel?"#fff":isPast||isWknd?"var(--border2)":"var(--text)",
+                fontWeight:isSel||isTdy?600:400,
+                cursor:isPast||isWknd?"default":"pointer",
+                outline:isTdy&&!isSel?"1.5px solid var(--accent)":"none",
+                outlineOffset:"1px",
+              }}>{d}</div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:10,fontSize:11,color:"var(--muted)",textAlign:"center"}}>Weekdays only · CA & NV patients</div>
+      </div>
+    );
+  }
 
-    // ── Main App ──────────────────────────────────────────────────────────────
-    function App() {
-      const [step, setStep] = useState(0);
-      const [animKey, setAnimKey] = useState(0);
-      const [office, setOffice] = useState(null);
-      const [doctor, setDoctor] = useState(null);
-      const [profile, setProfile] = useState(null);
-      const [date, setDate] = useState("");
-      const [time, setTime] = useState("");
-      const [calY, setCalY] = useState(new Date().getFullYear());
-      const [calM, setCalM] = useState(new Date().getMonth());
-      const [slots, setSlots] = useState([]);
-      const [form, setForm] = useState({ first:"", last:"", dob:"", email:"", phone:"", reason:"" });
-      const [done, setDone] = useState(false);
+  // ── Main App ───────────────────────────────────────────────────────────────
+  function App() {
+    const [step,setStep]=useState(0);
+    const [animKey,setAnimKey]=useState(0);
+    const [profile,setProfile]=useState(null);
+    const [date,setDate]=useState("");
+    const [time,setTime]=useState("");
+    const [cy,setCy]=useState(new Date().getFullYear());
+    const [cm,setCm]=useState(new Date().getMonth());
+    const [slots,setSlots]=useState([]);
+    const [state,setState]=useState("");
+    const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",reason:""});
+    const [done,setDone]=useState(false);
+    const doctor=DOCTORS[0];
 
-      const doctors = MOCK_DOCTORS.filter(d => d.office_id === office?.id);
-      useEffect(() => { if (date && doctor) setSlots(generateSlots(doctor.id)); }, [date, doctor]);
+    useEffect(()=>{ if(date) setSlots(getSlots()); },[date]);
+    const go=s=>{setAnimKey(k=>k+1);setStep(s);};
+    const prevM=()=>cm===0?(setCy(y=>y-1),setCm(11)):setCm(m=>m-1);
+    const nextM=()=>cm===11?(setCy(y=>y+1),setCm(0)):setCm(m=>m+1);
 
-      const go = s => { setAnimKey(k => k+1); setStep(s); };
-      const prevM = () => calM === 0 ? (setCalY(y=>y-1), setCalM(11)) : setCalM(m=>m-1);
-      const nextM = () => calM === 11 ? (setCalY(y=>y+1), setCalM(0)) : setCalM(m=>m+1);
+    const canStep0=!!profile;
+    const canStep1=!!(date&&time&&state);
+    const canStep2=!!(form.first&&form.last&&form.email&&form.phone);
+    const progressPct = [0,25,50,75,100][Math.min(step+(done?1:0),4)];
 
-      // ── Confirmed Screen ───────────────────────────────────────────────────
-      if (done) return (
-        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-          <div style={{ maxWidth:520, width:"100%", background:"var(--surface)", borderRadius:24, border:"1px solid var(--border)", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", padding:"48px 40px", textAlign:"center" }}>
-            <div style={{ fontSize:44, color:"var(--accent)", marginBottom:16 }}>✦</div>
-            <h2 style={{ fontFamily:"'DM Serif Display',serif", fontSize:28, marginBottom:8 }}>Appointment Confirmed</h2>
-            <p style={{ color:"var(--muted)", marginBottom:28 }}>{form.first} {form.last} — {profile?.name}</p>
-            <div style={{ background:"var(--card)", borderRadius:14, border:"1px solid var(--border)", padding:"4px 20px", marginBottom:16, textAlign:"left" }}>
-              {[["Provider", `Dr. ${doctor?.first_name} ${doctor?.last_name}`],["Location", office?.name],["Date & Time", `${date} at ${time}`],["Duration", `${profile?.duration} min`]].map(([l,v]) => (
-                <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid var(--border)", fontSize:14 }}>
-                  <span style={{ fontSize:11, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em" }}>{l}</span>
-                  <span>{v}</span>
+    // ── Confirmed ────────────────────────────────────────────────────────────
+    if (done) return (
+      <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"16px 32px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <Logo/>
+        </div>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
+          <div style={{maxWidth:500,width:"100%",textAlign:"center"}}>
+            <div style={{width:64,height:64,borderRadius:"50%",background:"var(--accent-light)",border:"2px solid var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px",fontSize:26}}>✓</div>
+            <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:600,marginBottom:8,color:"var(--text)"}}>You're all set, {form.first}!</h2>
+            <p style={{color:"var(--muted)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
+              Your consultation has been booked. Dr. Roohani will see you soon. Check your email for a confirmation and video visit link.
+            </p>
+            <div style={{background:"var(--soft)",borderRadius:16,border:"1.5px solid var(--border)",overflow:"hidden",marginBottom:28,textAlign:"left"}}>
+              {[
+                ["Visit type", profile?.name],
+                ["Date & time", `${prettyDate(date)} at ${time}`],
+                ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
+                ["State", state],
+                ["Confirmation to", form.email],
+              ].map(([l,v],i,arr)=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 20px",borderBottom:i<arr.length-1?"1px solid var(--border)":"none"}}>
+                  <span style={{fontSize:11,color:"var(--muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>{l}</span>
+                  <span style={{fontSize:14,fontWeight:500,color:"var(--text)",textAlign:"right",maxWidth:"60%"}}>{v}</span>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize:13, color:"var(--muted)", marginBottom:28 }}>Confirmation sent to {form.email}</p>
-            <button className="btn-primary" onClick={() => { setDone(false); setStep(0); setOffice(null); setDoctor(null); setProfile(null); setDate(""); setTime(""); setForm({first:"",last:"",dob:"",email:"",phone:"",reason:""}); }} style={{ background:"var(--accent)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 32px", fontSize:14, fontWeight:700, cursor:"pointer", transition:"all 0.2s" }}>
-              Book Another
+            <div style={{background:"#f0faf5",border:"1px solid #b7dfc9",borderRadius:12,padding:"14px 20px",marginBottom:28,fontSize:13,color:"var(--accent2)",lineHeight:1.6,textAlign:"left"}}>
+              <strong>What to expect:</strong> You'll receive a video visit link via email. The visit is 100% online — no commute, no waiting room. Have your insurance card handy if you'd like us to check coverage.
+            </div>
+            <button className="btn-primary" onClick={()=>{setDone(false);setStep(0);setProfile(null);setDate("");setTime("");setState("");setForm({first:"",last:"",dob:"",email:"",phone:"",reason:""});}} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:14,fontWeight:500,cursor:"pointer"}}>
+              Book Another Visit
             </button>
           </div>
         </div>
-      );
+      </div>
+    );
 
-      // ── Main Widget ────────────────────────────────────────────────────────
-      const canContinue = [!!office, !!doctor, !!profile, !!(date && time)][step] ?? true;
+    return (
+      <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",flexDirection:"column"}}>
 
-      return (
-        <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 16px" }}>
-          <div style={{ maxWidth:680, width:"100%", background:"var(--surface)", borderRadius:24, border:"1px solid var(--border)", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", padding:"36px 40px" }}>
+        {/* Progress bar */}
+        <div className="progress-bar">
+          <div className="progress-fill" style={{width:`${progressPct}%`}}/>
+        </div>
 
-            {/* Header */}
-            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:28 }}>
-              <span style={{ fontSize:26, color:"var(--accent)" }}>✦</span>
+        {/* Nav */}
+        <div style={{padding:"16px 32px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff",position:"sticky",top:0,zIndex:10}}>
+          <Logo/>
+          <div style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>
+            100% Online · CA &amp; NV
+          </div>
+        </div>
+
+        {/* Hero banner — only on step 0 */}
+        {step===0 && (
+          <div style={{background:"linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%)",padding:"28px 32px",textAlign:"center"}}>
+            <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontStyle:"italic",color:"#95d5b2",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Medical weight loss</p>
+            <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:300,color:"#ffffff",letterSpacing:"-0.01em",lineHeight:1.25,marginBottom:6}}>
+              Start with medication. <em style={{fontStyle:"italic",color:"#95d5b2"}}>Finish without it.</em>
+            </h1>
+            <p style={{fontSize:13,color:"#b7e4c7",fontWeight:300}}>Ozempic® · Semaglutide · Tirzepatide · Physician-led</p>
+          </div>
+        )}
+
+        {/* Widget */}
+        <div style={{maxWidth:680,margin:"0 auto",width:"100%",padding:"36px 24px 60px"}}>
+          <StepBar current={step}/>
+
+          <div key={animKey} className="step-anim">
+
+            {/* ── Step 0: Visit Type ──────────────────────────────────────── */}
+            {step===0 && (
               <div>
-                <div style={{ fontFamily:"'DM Serif Display',serif", fontSize:22, fontWeight:600 }}>Book an Appointment</div>
-                <div style={{ fontSize:12, color:"var(--muted)", letterSpacing:"0.04em" }}>Powered by DrChrono</div>
+                <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:600,marginBottom:4}}>What brings you in?</h2>
+                <p style={{color:"var(--muted)",fontSize:13,marginBottom:24,lineHeight:1.5}}>New patients: start with an Initial Consultation. Existing patients: pick the visit type that matches your needs.</p>
+
+                {/* Doctor pill */}
+                <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:"var(--soft)",borderRadius:12,border:"1.5px solid var(--border)",marginBottom:20}}>
+                  <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#d8f3dc,#b7e4c7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"var(--accent2)",flexShrink:0,fontFamily:"'Cormorant Garamond',serif"}}>DR</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,fontSize:14}}>Dr. Darius Roohani, {doctor.cred}</div>
+                    <div style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{doctor.bio}</div>
+                  </div>
+                  <div style={{fontSize:12,color:"var(--accent)",fontWeight:600}}>{doctor.rating}</div>
+                </div>
+
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {PROFILES.map(p=>(
+                    <div key={p.id} className="card-sel" onClick={()=>setProfile(p)} style={{
+                      display:"flex",alignItems:"flex-start",gap:16,padding:"18px 20px",
+                      borderRadius:14,
+                      border:profile?.id===p.id?"2px solid var(--accent)":"1.5px solid var(--border)",
+                      background:profile?.id===p.id?"#f0faf5":"var(--soft)",
+                      position:"relative",
+                    }}>
+                      <div style={{fontSize:18,color:profile?.id===p.id?"var(--accent)":"var(--muted)",marginTop:2,flexShrink:0}}>{p.icon}</div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <span style={{fontWeight:600,fontSize:15,color:"var(--text)"}}>{p.name}</span>
+                          {p.badge && <span style={{fontSize:10,fontWeight:700,background:"var(--accent)",color:"#fff",borderRadius:20,padding:"2px 8px",letterSpacing:"0.04em",textTransform:"uppercase"}}>{p.badge}</span>}
+                        </div>
+                        <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}>{p.desc}</div>
+                        <div style={{display:"flex",gap:12,fontSize:12}}>
+                          <span style={{color:"var(--accent)",fontWeight:600}}>{p.price}</span>
+                          <span style={{color:"var(--muted)"}}>·</span>
+                          <span style={{color:"var(--muted)"}}>{p.duration} min</span>
+                        </div>
+                      </div>
+                      {profile?.id===p.id && <div style={{width:22,height:22,borderRadius:"50%",background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>✓</div>}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <StepIndicator steps={["Location","Provider","Type","Schedule","Details"]} current={step} />
+            {/* ── Step 1: Schedule ─────────────────────────────────────────── */}
+            {step===1 && (
+              <div>
+                <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:600,marginBottom:4}}>Pick a date &amp; time</h2>
+                <p style={{color:"var(--muted)",fontSize:13,marginBottom:24}}>All visits are 100% online via video call.</p>
 
-            <div key={animKey} className="step-anim" style={{ minHeight:320 }}>
-
-              {/* Step 0 – Office */}
-              {step === 0 && (
-                <div>
-                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Choose a Location</h3>
-                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>Select the office you'd like to visit.</p>
-                  <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                    {MOCK_OFFICES.map(o => (
-                      <div key={o.id} className="card-item" onClick={() => setOffice(o)} style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", borderRadius:14, border: office?.id===o.id ? "2px solid var(--accent)" : "2px solid var(--border)", background: office?.id===o.id ? "var(--card-active)" : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
-                        <span style={{ fontSize:22 }}>🏥</span>
-                        <div>
-                          <div style={{ fontWeight:600, marginBottom:2 }}>{o.name}</div>
-                          <div style={{ fontSize:13, color:"var(--muted)" }}>{o.address}</div>
-                        </div>
-                        {office?.id===o.id && <div style={{ position:"absolute", right:16, width:24, height:24, borderRadius:"50%", background:"var(--accent)", color:"#0f1117", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700 }}>✓</div>}
-                      </div>
+                {/* State selector */}
+                <div style={{marginBottom:20}}>
+                  <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:7}}>Your state</label>
+                  <div style={{display:"flex",gap:10}}>
+                    {STATES.map(s=>(
+                      <div key={s} onClick={()=>setState(s)} style={{
+                        flex:1,padding:"10px 16px",borderRadius:10,textAlign:"center",fontSize:14,fontWeight:500,
+                        border:state===s?"2px solid var(--accent)":"1.5px solid var(--border)",
+                        background:state===s?"#f0faf5":"var(--soft)",
+                        color:state===s?"var(--accent)":"var(--text2)",
+                        cursor:"pointer",transition:"all 0.15s",
+                      }}>{s}</div>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Step 1 – Doctor */}
-              {step === 1 && (
-                <div>
-                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Choose a Provider</h3>
-                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>Available at {office?.name}</p>
-                  <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                    {doctors.map(d => (
-                      <div key={d.id} className="card-item" onClick={() => setDoctor(d)} style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", borderRadius:14, border: doctor?.id===d.id ? "2px solid var(--accent)" : "2px solid var(--border)", background: doctor?.id===d.id ? "var(--card-active)" : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
-                        <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#6eb5ff33,#a78bfa33)", border:"2px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"var(--accent)", flexShrink:0 }}>
-                          {d.first_name[0]}{d.last_name[0]}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight:600, marginBottom:2 }}>Dr. {d.first_name} {d.last_name}</div>
-                          <div style={{ fontSize:13, color:"var(--muted)" }}>{d.specialty}</div>
-                        </div>
-                        {doctor?.id===d.id && <div style={{ position:"absolute", right:16, width:24, height:24, borderRadius:"50%", background:"var(--accent)", color:"#0f1117", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700 }}>✓</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2 – Appointment Type */}
-              {step === 2 && (
-                <div>
-                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Appointment Type</h3>
-                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>What kind of visit do you need?</p>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                    {MOCK_PROFILES.map(p => (
-                      <div key={p.id} className="card-item" onClick={() => setProfile(p)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:12, border: profile?.id===p.id ? `2px solid ${p.color}` : "2px solid var(--border)", background: profile?.id===p.id ? `${p.color}18` : "var(--card)", cursor:"pointer", transition:"all 0.2s", position:"relative" }}>
-                        <div style={{ width:12, height:12, borderRadius:"50%", background:p.color, flexShrink:0 }} />
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>{p.name}</div>
-                          <div style={{ fontSize:12, color:"var(--muted)" }}>{p.duration} min</div>
-                        </div>
-                        {profile?.id===p.id && <div style={{ width:22, height:22, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700 }}>✓</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3 – Schedule */}
-              {step === 3 && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24 }}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
                   <div>
-                    <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:18, marginBottom:14 }}>Pick a Date</h3>
-                    <Calendar selectedDate={date} onSelect={d => { setDate(d); setTime(""); }} year={calY} month={calM} onPrev={prevM} onNext={nextM} />
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:10}}>Date</label>
+                    <Calendar sel={date} onSel={d=>{setDate(d);setTime("");}} y={cy} m={cm} onPrev={prevM} onNext={nextM}/>
                   </div>
                   <div>
-                    <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:18, marginBottom:14 }}>Available Times</h3>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:10}}>Time (PT)</label>
                     {!date ? (
-                      <p style={{ color:"var(--muted)", fontSize:13, marginTop:8 }}>Select a date first</p>
+                      <div style={{background:"var(--soft)",borderRadius:14,padding:24,border:"1.5px solid var(--border)",textAlign:"center",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
+                        <div style={{fontSize:24,opacity:0.25}}>◇</div>
+                        <p style={{color:"var(--muted)",fontSize:12}}>Select a date first</p>
+                      </div>
                     ) : (
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, maxHeight:260, overflowY:"auto" }}>
-                        {slots.map(s => (
-                          <div key={s.time} className="slot" onClick={() => s.available && setTime(s.time)} style={{ padding:"10px 8px", borderRadius:9, fontSize:13, fontWeight:500, textAlign:"center", background: time===s.time ? "var(--accent)" : s.available ? "var(--card)" : "var(--surface)", color: time===s.time ? "#0f1117" : s.available ? "var(--text)" : "var(--muted)", border: time===s.time ? "2px solid var(--accent)" : "2px solid var(--border)", cursor: s.available ? "pointer" : "not-allowed", textDecoration: !s.available ? "line-through" : "none", opacity: !s.available ? 0.4 : 1, transition:"all 0.15s" }}>
-                            {s.time}
-                          </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,maxHeight:260,overflowY:"auto"}}>
+                        {slots.map(s=>(
+                          <div key={s.time} className={s.avail?"slot-btn":""} onClick={()=>s.avail&&setTime(s.time)} style={{
+                            padding:"10px 6px",borderRadius:9,fontSize:12,fontWeight:500,textAlign:"center",
+                            background:time===s.time?"var(--accent)":s.avail?"var(--soft)":"var(--bg)",
+                            color:time===s.time?"#fff":s.avail?"var(--text)":"var(--border2)",
+                            border:time===s.time?"2px solid var(--accent)":"1.5px solid var(--border)",
+                            cursor:s.avail?"pointer":"not-allowed",
+                            textDecoration:!s.avail?"line-through":"none",
+                            opacity:!s.avail?0.5:1,
+                          }}>{s.time}</div>
                         ))}
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-
-              {/* Step 4 – Patient Info */}
-              {step === 4 && (
-                <div>
-                  <h3 style={{ fontFamily:"'DM Serif Display',serif", fontSize:20, marginBottom:6 }}>Your Information</h3>
-                  <p style={{ color:"var(--muted)", fontSize:14, marginBottom:20 }}>We'll use this to confirm your appointment.</p>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:24 }}>
-                    {[["First Name","first","Jane","text"],["Last Name","last","Smith","text"],["Date of Birth","dob","","date"],["Phone","phone","(415) 555-0100","tel"]].map(([label, key, ph, type]) => (
-                      <div key={key} style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                        <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</label>
-                        <input className="field" type={type} placeholder={ph} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})} />
-                      </div>
-                    ))}
-                    <div style={{ gridColumn:"1/-1", display:"flex", flexDirection:"column", gap:6 }}>
-                      <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Email</label>
-                      <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                    </div>
-                    <div style={{ gridColumn:"1/-1", display:"flex", flexDirection:"column", gap:6 }}>
-                      <label style={{ fontSize:11, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Reason for Visit <span style={{ color:"var(--muted)", fontWeight:400, textTransform:"none" }}>(optional)</span></label>
-                      <textarea className="field" rows={3} placeholder="Briefly describe your symptoms..." value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} />
-                    </div>
+                {date&&time&&(
+                  <div style={{marginTop:16,padding:"11px 16px",background:"#f0faf5",borderRadius:10,border:"1px solid #b7dfc9",fontSize:13,color:"var(--accent2)",fontWeight:500}}>
+                    ✓ &nbsp;{prettyDate(date)} at {time} PT · {state}
                   </div>
-                  {/* Summary */}
-                  <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:12, padding:"16px 20px" }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:"var(--accent)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Appointment Summary</div>
-                    <div style={{ display:"grid", gridTemplateColumns:"auto 1fr", gap:"8px 16px", fontSize:14, alignItems:"center" }}>
-                      {[["Provider", `Dr. ${doctor?.first_name} ${doctor?.last_name}`],["Type", profile?.name],["Date", date],["Time", time],["Duration", `${profile?.duration} min`]].map(([l,v]) => (
-                        <React.Fragment key={l}>
-                          <span style={{ fontSize:11, color:"var(--muted)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.04em" }}>{l}</span>
-                          <span>{v}</span>
-                        </React.Fragment>
-                      ))}
+                )}
+              </div>
+            )}
+
+            {/* ── Step 2: Your Info ────────────────────────────────────────── */}
+            {step===2 && (
+              <div>
+                <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:600,marginBottom:4}}>Your information</h2>
+                <p style={{color:"var(--muted)",fontSize:13,marginBottom:24,lineHeight:1.5}}>
+                  Used to confirm your appointment and create your patient record. Protected under HIPAA.
+                </p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+                  {[["First name","first","Jane","text"],["Last name","last","Smith","text"],["Date of birth","dob","","date"],["Phone","phone","(310) 555-0100","tel"]].map(([label,k,ph,type])=>(
+                    <div key={k} style={{display:"flex",flexDirection:"column",gap:6}}>
+                      <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
+                      <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
                     </div>
+                  ))}
+                  <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Email</label>
+                    <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
+                  </div>
+                  <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
+                    <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
+                      What are your weight loss goals? <span style={{fontWeight:400,textTransform:"none",fontSize:12}}>(optional)</span>
+                    </label>
+                    <textarea className="field" rows={3} placeholder="e.g. I want to lose 30 lbs for my wedding in June, ideally without staying on medication long term..." value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/>
                   </div>
                 </div>
-              )}
-            </div>
+                <div style={{fontSize:12,color:"var(--muted)",background:"var(--soft)",padding:"10px 14px",borderRadius:9,border:"1px solid var(--border)",lineHeight:1.6}}>
+                  🔒 &nbsp;Your information is encrypted and protected under HIPAA. We never sell your data.
+                </div>
+              </div>
+            )}
 
-            {/* Nav Buttons */}
-            <div style={{ display:"flex", alignItems:"center", marginTop:32, gap:12 }}>
-              {step > 0 && (
-                <button className="btn-secondary" onClick={() => go(step-1)} style={{ background:"transparent", color:"var(--muted)", border:"1.5px solid var(--border)", borderRadius:12, padding:"12px 20px", fontSize:14, fontWeight:500, cursor:"pointer", transition:"all 0.2s" }}>
-                  ← Back
-                </button>
-              )}
-              <div style={{ flex:1 }} />
-              {step < 4 && (
-                <button className="btn-primary" onClick={() => canContinue && go(step+1)} style={{ background:"var(--accent)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 28px", fontSize:14, fontWeight:700, cursor: canContinue ? "pointer" : "not-allowed", opacity: canContinue ? 1 : 0.4, transition:"all 0.2s" }}>
-                  Continue →
-                </button>
-              )}
-              {step === 4 && (
-                <button className="btn-primary" onClick={() => { if (form.first && form.last && form.email) setDone(true); }} style={{ background:"linear-gradient(135deg,#6eb5ff,#a78bfa)", color:"#0f1117", border:"none", borderRadius:12, padding:"12px 28px", fontSize:14, fontWeight:700, cursor: (form.first&&form.last&&form.email) ? "pointer" : "not-allowed", opacity: (form.first&&form.last&&form.email) ? 1 : 0.4, transition:"all 0.2s" }}>
-                  Confirm Appointment ✦
-                </button>
-              )}
-            </div>
+            {/* ── Step 3: Confirm ──────────────────────────────────────────── */}
+            {step===3 && (
+              <div>
+                <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:600,marginBottom:4}}>Review &amp; confirm</h2>
+                <p style={{color:"var(--muted)",fontSize:13,marginBottom:24}}>Please review your appointment details before confirming.</p>
 
+                <div style={{background:"var(--soft)",borderRadius:16,border:"1.5px solid var(--border)",overflow:"hidden",marginBottom:20}}>
+                  {[
+                    ["Visit type", `${profile?.name} — ${profile?.price}`],
+                    ["Date", prettyDate(date)],
+                    ["Time", `${time} PT`],
+                    ["State", state],
+                    ["Provider", `Dr. ${doctor.first} ${doctor.last}, ${doctor.cred}`],
+                    ["Format", "Video visit (link sent by email)"],
+                    ["Duration", `${profile?.duration} min`],
+                    ["Patient", `${form.first} ${form.last}`],
+                    ["Confirmation to", form.email],
+                  ].map(([l,v],i,arr)=>(
+                    <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 20px",borderBottom:i<arr.length-1?"1px solid var(--border)":"none",flexWrap:"wrap",gap:4}}>
+                      <span style={{fontSize:11,color:"var(--muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em",flexShrink:0}}>{l}</span>
+                      <span style={{fontSize:14,fontWeight:500,color:"var(--text)",textAlign:"right"}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {profile?.id===201 && (
+                  <div style={{background:"#f0faf5",border:"1px solid #b7dfc9",borderRadius:12,padding:"14px 18px",fontSize:13,color:"var(--accent2)",lineHeight:1.65,marginBottom:16}}>
+                    <strong>Your $99 initial consultation includes:</strong> full medical history review, personalized medication recommendation, and your custom weight loss roadmap — including a plan to eventually get off medication.
+                  </div>
+                )}
+
+                <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.6}}>
+                  By confirming, you agree to YooshMD's <a href="https://www.yooshmd.com/terms-of-service" target="_blank" style={{color:"var(--accent)"}}>Terms of Service</a> and <a href="https://www.yooshmd.com/hipaa" target="_blank" style={{color:"var(--accent)"}}>Notice of Privacy Practices</a>.
+                </div>
+              </div>
+            )}
+
+          </div>{/* end step-anim */}
+
+          {/* Nav buttons */}
+          <div style={{display:"flex",alignItems:"center",marginTop:36,gap:12}}>
+            {step>0 && (
+              <button className="btn-back" onClick={()=>go(step-1)} style={{background:"transparent",color:"var(--text2)",border:"1.5px solid var(--border)",borderRadius:10,padding:"12px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
+                ← Back
+              </button>
+            )}
+            <div style={{flex:1}}/>
+            {step<3 && (
+              <button className="btn-primary" disabled={[!canStep0,!canStep1,!canStep2][step]} onClick={()=>{if([canStep0,canStep1,canStep2][step])go(step+1);}} style={{
+                background:[canStep0,canStep1,canStep2][step]?"var(--accent)":"var(--border)",
+                color:[canStep0,canStep1,canStep2][step]?"#fff":"var(--muted)",
+                border:"none",borderRadius:10,padding:"13px 32px",fontSize:13,fontWeight:600,
+                cursor:[canStep0,canStep1,canStep2][step]?"pointer":"not-allowed",
+                letterSpacing:"0.02em",
+              }}>
+                {step===0?"Choose a time →":step===1?"Enter your info →":"Review booking →"}
+              </button>
+            )}
+            {step===3 && (
+              <button className="btn-primary" onClick={()=>setDone(true)} style={{background:"var(--accent)",color:"#fff",border:"none",borderRadius:10,padding:"13px 36px",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.02em"}}>
+                Confirm appointment ✓
+              </button>
+            )}
           </div>
-        </div>
-      );
-    }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+          {/* Trust bar */}
+          <div style={{marginTop:40,paddingTop:24,borderTop:"1px solid var(--border)",display:"flex",justifyContent:"center",gap:28,flexWrap:"wrap"}}>
+            {["Board-certified MD","HIPAA protected","No insurance needed","100% online"].map(t=>(
+              <div key={t} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--muted)",fontWeight:500}}>
+                <span style={{color:"var(--accent)",fontSize:13}}>✓</span> {t}
+              </div>
+            ))}
+          </div>
+
+        </div>{/* end widget body */}
+
+        {/* Footer */}
+        <div style={{borderTop:"1px solid var(--border)",padding:"20px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+          <Logo/>
+          <div style={{display:"flex",gap:16,fontSize:11,color:"var(--muted)"}}>
+            <a href="https://www.yooshmd.com/hipaa" target="_blank" style={{color:"var(--muted)",textDecoration:"none"}}>Privacy Practices</a>
+            <a href="https://www.yooshmd.com/terms-of-service" target="_blank" style={{color:"var(--muted)",textDecoration:"none"}}>Terms</a>
+            <a href="https://www.yooshmd.com" target="_blank" style={{color:"var(--muted)",textDecoration:"none"}}>yooshmd.com</a>
+          </div>
+          <div style={{fontSize:11,color:"var(--muted)"}}>Powered by DrChrono</div>
+        </div>
+
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
 </body>
 </html>
