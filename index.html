@@ -151,7 +151,7 @@
   }
 
   // ── Calendar ───────────────────────────────────────────────────────────────
-  function Calendar({ sel, onSel, y, m, onPrev, onNext }) {
+  function Calendar({ sel, onSel, y, m, onPrev, onNext, availableDates=[] }) {
     const days = new Date(y,m+1,0).getDate();
     const firstDay = new Date(y,m,1).getDay();
     const today = new Date();
@@ -172,17 +172,19 @@
             const isPast=new Date(y,m,d)<new Date(today.getFullYear(),today.getMonth(),today.getDate());
             const isSel=sel===ds;
             const isTdy=d===today.getDate()&&m===today.getMonth()&&y===today.getFullYear();
-            const isWknd=new Date(y,m,d).getDay()===0||new Date(y,m,d).getDay()===6;
+            const dow=new Date(y,m,d).getDay();
+            const isWknd=dow===0; // Sundays only — Saturdays now open
+            const hasSlots=availableDates.includes(ds);
             return (
-              <div key={d} className={isPast||isWknd?"":"cal-day"} onClick={()=>!isPast&&!isWknd&&onSel(ds)} style={{
+              <div key={d} className={isPast||isWknd||!hasSlots?"":"cal-day"} onClick={()=>!isPast&&!isWknd&&hasSlots&&onSel(ds)} style={{
                 fontSize:12,textAlign:"center",padding:"6px 0",borderRadius:"50%",
-                background:isSel?"var(--accent)":isPast||isWknd?"transparent":"var(--soft2)18",
-                color:isSel?"#fff":isPast||isWknd?"#888":"var(--text)",
-                fontWeight:isSel?700:isPast||isWknd?400:500,
-                cursor:isPast||isWknd?"default":"pointer",
+                background:isSel?"var(--accent)":"transparent",
+                color:isSel?"#fff":isPast||isWknd||!hasSlots?"#888":"var(--text)",
+                fontWeight:isSel?700:isPast||isWknd||!hasSlots?400:500,
+                cursor:isPast||isWknd||!hasSlots?"default":"pointer",
                 outline:isTdy&&!isSel?"2px solid var(--accent)":"none",
                 outlineOffset:"1px",
-                opacity:isPast||isWknd?0.35:1,
+                opacity:isPast||isWknd||!hasSlots?0.35:1,
               }}>{d}</div>
             );
           })}
@@ -205,6 +207,7 @@
     const [cm,setCm]=useState(new Date().getMonth());
     const [slots,setSlots]=useState([]);
     const [slotsLoading,setSlotsLoading]=useState(false);
+    const [availableDates,setAvailableDates]=useState([]);
     const [state,setState]=useState("California");
     const [form,setForm]=useState({first:"",last:"",dob:"",email:"",phone:"",gender:"",address:"",city:"",zip:"",reason:""});
     const [done,setDone]=useState(false);
@@ -228,6 +231,14 @@
           setProfile(fallback);
         });
     },[]);
+
+    // Fetch available dates whenever calendar month changes
+    useEffect(()=>{
+      fetch(`${API}/api/slots/available-dates?year=${cy}&month=${cm+1}`)
+        .then(r=>r.json())
+        .then(data=>setAvailableDates(data.availableDates||[]))
+        .catch(()=>setAvailableDates([]));
+    },[cy,cm]);
 
     // Fetch available slots whenever date changes
     useEffect(()=>{
@@ -449,7 +460,7 @@
                 <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
                   <div>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:10}}>Date</label>
-                    <Calendar sel={date} onSel={d=>{setDate(d);setTime("");}} y={cy} m={cm} onPrev={prevM} onNext={nextM}/>
+                    <Calendar sel={date} onSel={d=>{setDate(d);setTime("");}} y={cy} m={cm} onPrev={prevM} onNext={nextM} availableDates={availableDates}/>
                   </div>
                   <div>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:10}}>Time (PT)</label>
