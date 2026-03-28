@@ -507,7 +507,7 @@
                   {[["Date of birth","dob","","date"],["Phone","phone","","tel"]].map(([label,k,ph,type])=>(
                     <div key={k} style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                       <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
-                      <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+                      <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{width:"100%",boxSizing:"border-box"}}/>
                     </div>
                   ))}
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
