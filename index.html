@@ -308,7 +308,7 @@
         // 2. Book appointment
         const ar = await fetch(`${API}/api/appointments`,{
           method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({doctor:523137,office:555620,patient:patientId,scheduled_time:time,exam_room:1,duration:profile.duration,profile:profile.id,reason:form.reason||profile.name,is_telehealth:true}),
+          body:JSON.stringify({doctor:523137,office:555620,patient:patientId,scheduled_time:time,exam_room:1,duration:profile.duration,profile:profile.id,reason:form.reason||profile.name,is_telehealth:true,is_virtual_base:true}),
         });
         const appt = await ar.json();
         if(!ar.ok) throw new Error(JSON.stringify(appt));
