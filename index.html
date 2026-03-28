@@ -176,12 +176,13 @@
             return (
               <div key={d} className={isPast||isWknd?"":"cal-day"} onClick={()=>!isPast&&!isWknd&&onSel(ds)} style={{
                 fontSize:12,textAlign:"center",padding:"6px 0",borderRadius:"50%",
-                background:isSel?"var(--accent)":"transparent",
-                color:isSel?"#fff":isPast||isWknd?"var(--border2)":"var(--text)",
-                fontWeight:isSel||isTdy?600:400,
+                background:isSel?"var(--accent)":isPast||isWknd?"transparent":"var(--soft2)18",
+                color:isSel?"#fff":isPast||isWknd?"#ccc":"var(--text)",
+                fontWeight:isSel?700:isPast||isWknd?400:500,
                 cursor:isPast||isWknd?"default":"pointer",
-                outline:isTdy&&!isSel?"1.5px solid var(--accent)":"none",
+                outline:isTdy&&!isSel?"2px solid var(--accent)":"none",
                 outlineOffset:"1px",
+                opacity:isPast||isWknd?0.35:1,
               }}>{d}</div>
             );
           })}
@@ -429,10 +430,10 @@
                   <div style={{display:"flex",gap:10}}>
                     {STATES.map(s=>(
                       <div key={s} onClick={()=>setState(s)} style={{
-                        flex:1,padding:"10px 16px",borderRadius:10,textAlign:"center",fontSize:14,fontWeight:500,
+                        flex:1,padding:"12px 16px",borderRadius:10,textAlign:"center",fontSize:14,fontWeight:600,
                         border:state===s?"2px solid var(--accent)":"1.5px solid var(--border)",
-                        background:state===s?"#f0faf5":"var(--soft)",
-                        color:state===s?"var(--accent)":"var(--text2)",
+                        background:state===s?"var(--accent)":"var(--soft)",
+                        color:state===s?"#fff":"var(--muted)",
                         cursor:"pointer",transition:"all 0.15s",
                       }}>{s}</div>
                     ))}
@@ -491,13 +492,13 @@
                   Used to confirm your appointment and create your patient record. Protected under HIPAA.
                 </p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
-                  {[["First name","first","Jane","text"],["Last name","last","Smith","text"]].map(([label,k,ph,type])=>(
+                  {[["First name","first","","text"],["Last name","last","","text"]].map(([label,k,ph,type])=>(
                     <div key={k} style={{display:"flex",flexDirection:"column",gap:6}}>
                       <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
                       <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
                     </div>
                   ))}
-                  {[["Date of birth","dob","","date"],["Phone","phone","(310) 555-0100","tel"]].map(([label,k,ph,type])=>(
+                  {[["Date of birth","dob","","date"],["Phone","phone","","tel"]].map(([label,k,ph,type])=>(
                     <div key={k} style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                       <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
                       <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
@@ -518,25 +519,25 @@
                   </div>
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Email</label>
-                    <input className="field" type="email" placeholder="jane@example.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
+                    <input className="field" type="email" placeholder="" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
                   </div>
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Street address</label>
-                    <input className="field" type="text" placeholder="123 Main St" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/>
+                    <input className="field" type="text" placeholder="" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>City</label>
-                    <input className="field" type="text" placeholder="Los Angeles" value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/>
+                    <input className="field" type="text" placeholder="" value={form.city} onChange={e=>setForm({...form,city:e.target.value})}/>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>ZIP code</label>
-                    <input className="field" type="text" placeholder="90001" value={form.zip} onChange={e=>setForm({...form,zip:e.target.value})}/>
+                    <input className="field" type="text" placeholder="" value={form.zip} onChange={e=>setForm({...form,zip:e.target.value})}/>
                   </div>
                   <div style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>
                       What are your weight loss goals? <span style={{fontWeight:400,textTransform:"none",fontSize:12}}>(optional)</span>
                     </label>
-                    <textarea className="field" rows={3} placeholder="e.g. I want to lose 30 lbs for my wedding in June, ideally without staying on medication long term..." value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/>
+                    <textarea className="field" rows={3} placeholder="" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/>
                   </div>
                 </div>
                 <div style={{fontSize:12,color:"var(--muted)",background:"var(--soft)",padding:"10px 14px",borderRadius:9,border:"1px solid var(--border)",lineHeight:1.6}}>
