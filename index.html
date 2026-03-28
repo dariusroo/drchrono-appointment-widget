@@ -218,9 +218,15 @@
         .then(r=>r.json())
         .then(data=>{
           const meta = PROFILE_META.default;
-          setProfiles((data.results||[]).map(p=>({...p,...meta})));
+          const list = (data.results||[]).map(p=>({...p,...meta}));
+          setProfiles(list);
+          if(list.length>0) setProfile(list[0]);
         })
-        .catch(()=>setProfiles([{id:969506,name:"Initial Consultation",duration:30,...PROFILE_META.default}]));
+        .catch(()=>{
+          const fallback = {id:969506,name:"Initial Consultation",duration:30,...PROFILE_META.default};
+          setProfiles([fallback]);
+          setProfile(fallback);
+        });
     },[]);
 
     // Fetch available slots whenever date changes
