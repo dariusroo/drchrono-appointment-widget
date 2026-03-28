@@ -177,7 +177,7 @@
               <div key={d} className={isPast||isWknd?"":"cal-day"} onClick={()=>!isPast&&!isWknd&&onSel(ds)} style={{
                 fontSize:12,textAlign:"center",padding:"6px 0",borderRadius:"50%",
                 background:isSel?"var(--accent)":isPast||isWknd?"transparent":"var(--soft2)18",
-                color:isSel?"#fff":isPast||isWknd?"#ccc":"var(--text)",
+                color:isSel?"#fff":isPast||isWknd?"#888":"var(--text)",
                 fontWeight:isSel?700:isPast||isWknd?400:500,
                 cursor:isPast||isWknd?"default":"pointer",
                 outline:isTdy&&!isSel?"2px solid var(--accent)":"none",
