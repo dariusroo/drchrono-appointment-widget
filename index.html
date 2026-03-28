@@ -439,7 +439,7 @@
                   </div>
                 </div>
 
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
                   <div>
                     <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.07em",display:"block",marginBottom:10}}>Date</label>
                     <Calendar sel={date} onSel={d=>{setDate(d);setTime("");}} y={cy} m={cm} onPrev={prevM} onNext={nextM}/>
@@ -491,8 +491,14 @@
                   Used to confirm your appointment and create your patient record. Protected under HIPAA.
                 </p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
-                  {[["First name","first","Jane","text"],["Last name","last","Smith","text"],["Date of birth","dob","","date"],["Phone","phone","(310) 555-0100","tel"]].map(([label,k,ph,type])=>(
+                  {[["First name","first","Jane","text"],["Last name","last","Smith","text"]].map(([label,k,ph,type])=>(
                     <div key={k} style={{display:"flex",flexDirection:"column",gap:6}}>
+                      <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
+                      <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
+                    </div>
+                  ))}
+                  {[["Date of birth","dob","","date"],["Phone","phone","(310) 555-0100","tel"]].map(([label,k,ph,type])=>(
+                    <div key={k} style={{gridColumn:"1/-1",display:"flex",flexDirection:"column",gap:6}}>
                       <label style={{fontSize:11,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</label>
                       <input className="field" type={type} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
                     </div>
