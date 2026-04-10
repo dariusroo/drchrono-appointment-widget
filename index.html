@@ -6,15 +6,6 @@
   <title>YooshMD — Book Your Consultation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WP8HEHJJPD"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-WP8HEHJJPD');
-  </script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -279,12 +270,7 @@
         .catch(()=>{});
     },[form.first, form.last, form.dob]);
 
-    const STEP_EVENTS = [null,'step_schedule_viewed','step_info_viewed','step_confirm_viewed'];
-    const go=s=>{
-      setAnimKey(k=>k+1);
-      setStep(s);
-      if(s>step && STEP_EVENTS[s]) window.gtag?.('event', STEP_EVENTS[s]);
-    };
+    const go=s=>{setAnimKey(k=>k+1);setStep(s);};
     const prevM=()=>cm===0?(setCy(y=>y-1),setCm(11)):setCm(m=>m-1);
     const nextM=()=>cm===11?(setCy(y=>y+1),setCm(0)):setCm(m=>m+1);
 
@@ -327,7 +313,6 @@
         const appt = await ar.json();
         if(!ar.ok) throw new Error(JSON.stringify(appt));
         setDone(true);
-        window.gtag?.('event', 'booking_complete');
       } catch(err) {
         setSubmitError("Something went wrong. Please try again or call (909) 293-8095.");
         console.error(err);
